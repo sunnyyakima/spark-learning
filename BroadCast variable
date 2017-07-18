@@ -1,0 +1,26 @@
+
+val dictionary = Map(("man"-> "noun"), ("is"->"verb"),("mortal"->"adjective"))
+val words = sc.parallelize(Array("man","is","mortal","mortal","1234","789","456","is","man"))
+
+// version 1, no broadcasting
+def getElementsCount(word :String, dictionary:Map[String,String]):(String,Int) = {
+  dictionary.filter{ case (wording,wordType) => wording.equals((word))}.map(x => (x._2,1)).headOption.getOrElse(("unknown" -> 1)) 
+//some dummy logic
+}
+
+val grammarElementCounts = words.map( word => getElementsCount(word,dictionary)).reduceByKey((x,y) => x+y)
+
+grammarElementCounts.foreach(println)
+
+
+/* version 2 with broadcasting variable */
+val broadCastDictionary = sc.broadcast(dictionary)
+broadCastDictionary.value.foreach(println) // note the ".value"
+
+// note the parameter type of broadcasting variable
+def getElementsCount(word :String, dictionary:org.apache.spark.broadcast.Broadcast[Map[String,String]]):(String,Int) = {
+  dictionary.value.filter{ case (wording,wordType) => wording.equals((word))}.map(x => (x._2,1)).headOption.getOrElse(("unknown" -> 1))
+}
+
+val grammarElementCounts = words.map( word => getElementsCount(word,broadCastDictionary)).reduceByKey((x,y) => x+y)
+
